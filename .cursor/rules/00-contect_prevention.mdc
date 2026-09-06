@@ -1,0 +1,11 @@
+---
+description: Strict rules to prevent context window bloat and enforce hyper-efficient AI communication.
+globs: ["*"]
+alwaysApply: true
+---
+# Context Preservation & Brevity
+- **No Yapping:** Eliminate all pleasantries, apologies, and conversational filler. Do not explain the code or your reasoning unless explicitly requested.
+- **Surgical Edits Only:** Never output an entire file just to change a few lines. Use precise code blocks with comments like `// ... existing code ...` to frame the exact modifications.
+- **Think in Diffs:** When fixing or refactoring, provide only the isolated function, class, or block being modified.
+- **No Repetition:** Do not repeat the prompt or summarize what you are about to do. Start immediately with the solution.
+- **Modular Focus:** If asked to build a new feature, architect it using small, isolated files rather than massive monoliths. This ensures future edits require loading less context.

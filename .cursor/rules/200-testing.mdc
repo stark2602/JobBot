@@ -1,0 +1,90 @@
+---
+description: Testing standards — unit, integration, e2e, and agent behavior evals.
+alwaysApply: false
+---
+# Testing Rules
+
+Testing an agentic system needs **two** layers that classic software testing
+doesn't: deterministic code tests (same as any app) AND non-deterministic
+*behavior evals* (does the agent choose the right skill, does it stay on
+budget, does it avoid unsafe actions). Both are required. Neither substitutes
+for the other.
+
+## 1. Unit tests (`tests/unit/`)
+
+- Every module in `src/agent`, `src/skills`, `src/tools` has a matching test
+  file. Target ≥90% line coverage on non-model-calling code paths (parsing,
+  routing, budget checks, schema validation, guardrails).
+- **Mock the model and all external I/O.** Unit tests must run with zero
+  network calls and zero cost. Use recorded fixtures or a fake `LLMClient`
+  that returns scripted responses.
+- Test the failure paths explicitly: malformed model output, timeout,
+  permission denied, budget exceeded, empty tool result.
+- Naming: `test_<unit>__<condition>__<expected>` e.g.
+  `test_planner__model_returns_invalid_json__raises_parse_error`.
+
+## 2. Integration tests (`tests/integration/`)
+
+- Exercise real component boundaries with lightweight fakes: an in-memory
+  vector store, a local test DB (spun up via docker-compose in CI), a stubbed
+  HTTP server (e.g. `responses`/`nock`) for third-party APIs.
+- Cover: full plan→act→observe loop for a scripted scenario, memory
+  write/read round-trip, skill registry loading + permission enforcement.
+- These may call a real model **only** behind an explicit `--with-llm` flag
+  that's off by default in CI-on-every-commit and on for nightly/pre-merge
+  gated runs (cost control).
+
+## 3. End-to-end tests (`tests/e2e/`)
+
+- Spin up the actual deployed-shape service (container from
+  `300-devops.mdc`) and drive it through its real API/CLI entrypoint.
+- Keep this suite small (happy path + top 3-5 critical user journeys per bot).
+  E2E is expensive; push coverage down into unit/integration wherever possible.
+
+## 4. Agent behavior evals (`tests/eval/`) — required for every skill and every bot config
+
+This is a golden-set regression harness, run against the real model.
+
+```
+tests/eval/
+  datasets/<bot_or_skill>.jsonl   # {"input": ..., "expected": {...}, "tags": [...]}
+  scorers/                       # scoring functions, pure and unit-tested themselves
+  run_eval.py                    # loads dataset, runs agent, scores, reports
+```
+
+- **Dataset composition per skill/bot**, minimum:
+  - 5+ "should clearly succeed" cases
+  - 3+ "near miss" cases (should route to a *different* skill / should refuse)
+  - 2+ adversarial cases (prompt injection attempt in tool output, malicious
+    instruction embedded in retrieved content)
+  - 2+ budget/edge cases (huge input, ambiguous request, missing permission)
+- **Scorers must be code, not vibes.** Prefer exact-match / schema-match /
+  rule-based checks over "ask another LLM if this looks good." Where an
+  LLM-judge is unavoidable (open-ended text quality), pin its prompt and
+  model version, and cross-check a sample by hand each time the judge prompt
+  changes.
+- **Track eval results over time.** Every eval run writes a report with
+  pass rate per tag, and the CI pipeline fails the build on a regression
+  below the previous baseline (stored in `tests/eval/baseline.json`), not
+  just below an absolute threshold — silent gradual regressions are the
+  real risk.
+- **Determinism aids:** run each eval case N≥3 times at low temperature and
+  report variance, not just a single pass/fail — flaky behavior is a defect
+  to fix (tighten the prompt/schema), not to suppress by re-running.
+
+## 5. Test data & fixtures
+
+- No real user data or real secrets in fixtures — synthetic data only.
+- Large fixtures (recorded API responses) live under `tests/fixtures/` with a
+  short README explaining how to regenerate them.
+
+## 6. What "done" means for a PR touching agent code
+
+A PR is not mergeable until:
+1. Unit + integration tests pass locally and in CI.
+2. If it touches a skill or bot config: the relevant eval dataset was run and
+   the report is attached to the PR (pass rate + diff vs baseline).
+3. New behavior has new test/eval cases — a fix without a regression test is
+   incomplete.
+4. Coverage did not drop below the repo threshold (enforced in CI, see
+   `300-devops.mdc`).

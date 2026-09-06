@@ -1,0 +1,90 @@
+---
+description: Contract and conventions for specialized agent skills/plugins.
+alwaysApply: false
+---
+# Specialized Skills
+
+A "skill" is a self-contained capability the agent can invoke (e.g. `web_search`,
+`code_exec`, `db_query`, `send_email`, `image_gen`). Skills are the extension
+point for turning the base agent into a "specialized bot."
+
+## Folder layout per skill
+
+```
+src/skills/<skill_name>/
+  __init__.py          # exports `SKILL` (see manifest below)
+  schema.py            # pydantic input/output models
+  handler.py           # the actual logic
+  prompts/             # any skill-specific prompt fragments
+  README.md            # what it does, when the planner should choose it, limits
+tests/unit/skills/<skill_name>/
+tests/eval/skills/<skill_name>/   # behavioral eval cases (see 200-testing.mdc)
+```
+
+## Skill manifest (required, no exceptions)
+
+Every skill exports one manifest object consumed by the executor's registry.
+Do not hand-roll ad hoc registration.
+
+```python
+class SkillManifest(BaseModel):
+    name: str                     # unique, snake_case
+    description: str              # shown to the planner — be precise, this IS the routing signal
+    input_schema: type[BaseModel]
+    output_schema: type[BaseModel]
+    permissions: list[str]        # e.g. ["network", "filesystem:read", "shell"]
+    cost_estimate: CostEstimate   # rough $ / latency, used by the budget system
+    idempotent: bool              # can it be safely retried?
+    handler: Callable[[Input, Context], Awaitable[Output]]
+```
+
+## Rules
+
+- **Single responsibility.** A skill does one job well. If a skill's handler
+  has branching logic for "mode A vs mode B" that don't share code, split it
+  into two skills.
+- **Validate at the boundary.** `handler()` receives an already-validated
+  `input_schema` instance — never a raw dict. Validation failures raise before
+  `handler` is called.
+- **Declare permissions honestly.** The `permissions` list is enforced by the
+  guardrail layer (`100-agent-core.mdc`). A skill that does an HTTP call but
+  doesn't declare `"network"` is a bug, not a convenience.
+- **Timeouts are mandatory.** Every skill handler must accept/respect a
+  deadline from `Context` and abort cleanly before it, returning a typed
+  timeout error — never hang.
+- **Errors are typed.** Define a small set of skill-specific error classes
+  (e.g. `SkillTimeoutError`, `SkillPermissionDenied`, `SkillUpstreamError`)
+  instead of letting raw exceptions bubble up; the executor needs to
+  distinguish "retry safely" from "do not retry."
+- **No shared mutable state between skills.** If two skills need to share
+  data, it goes through `state.working_memory`, not a module-level global.
+- **Description quality is a first-class deliverable.** The planner routes
+  purely on `name` + `description` (+ schemas). A vague description ("handles
+  data stuff") causes misrouting — write descriptions the way you'd write
+  documentation for another engineer picking the right function.
+
+## Adding a new skill — checklist
+
+1. Write the manifest + schemas first, get them reviewed, *then* implement.
+2. Add unit tests for the handler in isolation (mock all I/O).
+3. Add at least 3 eval cases: one clear-should-use, one clear-should-NOT-use
+   (a near-miss that should route elsewhere), one error/edge case.
+4. Register in `src/skills/registry.py` (single place, alphabetical).
+5. Update `/docs/skills.md` with a one-line summary + link to the skill's README.
+
+## Composing skills into a "specialized bot"
+
+A specialized bot = base agent core (`100-agent-core.mdc`) + a curated skill
+registry + a system prompt describing its persona/scope + guardrails limiting
+it to that registry. Do not fork the executor per bot — parametrize it:
+
+```
+BotConfig(
+  name="research_bot",
+  system_prompt=...,
+  allowed_skills=["web_search", "web_fetch", "summarize"],
+  budget=Budget(max_steps=12, max_cost_usd=0.50),
+)
+```
+
+New bot personalities are config, not new runtime code.

@@ -1,0 +1,11 @@
+---
+description: Enforces the use of a scratchpad (TASK.md) for multi-step feature development to prevent context drift.
+globs: ["*"]
+alwaysApply: false
+---
+# Spec-Driven Development
+- For any complex or multi-step task, start by creating or updating a `TASK.md` file in the project root.
+- **Checklist format:** Break the user's request down into a markdown checklist (`- [ ] Step 1`, `- [ ] Step 2`).
+- **State Management:** As you complete steps, check them off (`- [x] Step 1`) in `TASK.md`. 
+- **Consult before acting:** At the start of every new prompt in a multi-turn conversation, read `TASK.md` first to re-orient yourself to the current state of the objective.
+- Keep `TASK.md` concise. Delete it or archive it when the feature is completely merged.

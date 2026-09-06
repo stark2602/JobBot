@@ -1,0 +1,76 @@
+---
+alwaysApply: false
+---
+# Agent Core Architecture
+
+We are building the agent runtime ourselves. Do not pull in a heavyweight agent
+framework (e.g. full LangChain agents, AutoGPT-style loops) as a substitute for
+these components — implement the pieces below directly so behavior is
+transparent, testable, and debuggable.
+
+## Required components
+
+1. **Message/State schema** (`src/agent/state.py`)
+   - Single source of truth for conversation + working memory + scratchpad.
+   - Immutable updates: every step returns a *new* state object (append-only
+     event log), never mutates in place. This makes replay and time-travel
+     debugging possible.
+   - Fields: `messages`, `tool_calls`, `tool_results`, `working_memory`,
+     `budget` (tokens/time/cost remaining), `trace_id`.
+
+2. **Planner** (`src/agent/planner.py`)
+   - Turns the current state into: (a) a decision to call a tool/skill, or
+     (b) a final response, or (c) a request for clarification.
+   - Must be a pure function of `state -> Decision`. No hidden globals.
+   - Planner output is a typed `Decision` object (pydantic/zod), never a raw
+     string that gets regex-parsed. If the underlying model returns free text,
+     parse it into the schema immediately at the boundary and validate.
+
+3. **Executor / Orchestrator** (`src/agent/executor.py`)
+   - Owns the loop: `plan -> act -> observe -> repeat` up to a max step count.
+   - Enforces the **budget** on every iteration (max steps, max wall-clock time,
+     max tokens, max $ cost) — hard stop, not a soft suggestion.
+   - Every tool/skill invocation goes through one chokepoint
+     (`executor.invoke_skill(name, args, state)`) so permissions, logging, and
+     retries are centralized — skills are never called ad hoc from the planner.
+
+4. **Memory** (`src/agent/memory.py`)
+   - Split short-term (current run's scratchpad, in `state`) from long-term
+     (persisted store: vector index, key-value, or DB — pick one and document
+     it in `/docs/memory.md`).
+   - Long-term writes are explicit and reviewable: the agent proposes a memory
+     write as a typed action; it is logged before being committed.
+   - Never let raw, unsummarized tool output accumulate unbounded in
+     `working_memory` — define a summarization/eviction policy and test it.
+
+5. **Guardrail layer** (`src/agent/guardrails.py`)
+   - Input guardrails: validate/sanitize incoming user + tool-result content
+     before it reaches the planner (prompt-injection patterns, size limits).
+   - Output guardrails: validate the planner's decision against an allowlist
+     of permitted skills/tools for the current context *before* execution.
+   - This layer must be unbypassable — the executor calls it unconditionally,
+     it is not an opt-in helper.
+
+## Design rules
+
+- **No God object.** Planner, executor, memory, and guardrails are separate
+  classes/modules with narrow interfaces. A skill should never need to import
+  the executor.
+- **Determinism where possible.** Given the same state + same model response,
+  the non-model parts of the loop (parsing, routing, budget checks) must be
+  deterministic and unit-testable without calling a real model.
+- **Every model call is wrapped** in a single adapter (`src/agent/llm_client.py`)
+  that handles retries, timeouts, streaming, and structured-output parsing.
+  Nothing else in the codebase calls the model API directly.
+- **Traceability**: every step emits a structured event (see
+  `src/observability`) with `trace_id`, step number, inputs, outputs, latency,
+  and cost. If you add a new step type, add its event schema too.
+
+## Anti-patterns to reject in review
+
+- A planner that returns a plain string parsed downstream with regex.
+- A skill directly calling another skill (must go through the executor).
+- Unbounded `while True` loops without a budget check each iteration.
+- Prompt strings built by ad hoc `f"..."` concatenation scattered across
+  files — centralize prompt templates in `src/agent/prompts/` with versioned
+  filenames (`plan_v3.md`) so changes are diffable and A/B-testable.

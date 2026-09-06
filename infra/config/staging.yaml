@@ -1,0 +1,4 @@
+env: staging
+matcher_backend: heuristic
+send_email: false
+max_age_hours: 12

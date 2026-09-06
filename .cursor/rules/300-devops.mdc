@@ -1,0 +1,94 @@
+---
+description: CI/CD, containerization, environments, observability, and release rules.
+alwaysApply: false
+---
+# DevOps Rules
+
+## Environments
+
+- Three tiers, strictly separated: `local` → `staging` → `production`. Config
+  differences live in `/infra/config/<env>.yaml`, never as `if env == "prod"`
+  branches inside application code.
+- Every environment has its own model-provider budget/rate-limit config and
+  its own API keys — staging must never share prod credentials.
+
+## Containerization
+
+- Every service ships a multi-stage `Dockerfile`: build stage (deps + compile)
+  → slim runtime stage (no build tools, no dev dependencies).
+- Pin base image digests, not just tags (`python:3.12-slim@sha256:...`).
+- Non-root user in the final image. No secrets baked into image layers —
+  inject at runtime via the secrets manager (`400-security.mdc`).
+- `docker-compose.yml` at repo root brings up: the agent service + its deps
+  (vector store, Postgres/Redis, mock third-party API server) for local dev
+  and for integration tests in CI.
+
+## CI pipeline (required stages, in order — fail fast)
+
+1. **Lint & typecheck** — ruff/mypy or eslint/tsc. Fails the build on any error.
+2. **Unit tests** — no network, must finish in minutes not hours.
+3. **Build** — build the container image(s); fail on build warnings treated
+   as errors where feasible.
+4. **Integration tests** — run against docker-compose stack.
+5. **Eval regression** — run the agent eval suite (`200-testing.mdc`) against
+   a pinned model version; compare to `tests/eval/baseline.json`; fail on
+   regression, warn (don't block) on flat-but-noisy results.
+6. **Security scan** — dependency vulnerability scan (e.g. `pip-audit`/`npm
+   audit`/`osv-scanner`) + secret scan (e.g. `gitleaks`) on the diff.
+7. **E2E (on main / pre-release only, not every PR)** — full stack smoke test.
+
+Each stage's config lives under `.github/workflows/` (or equivalent CI
+config) as separate jobs so failures are attributable at a glance.
+
+## Release process
+
+- Semantic versioning for the agent runtime; skills/bot configs versioned
+  independently (a skill change shouldn't force a runtime major bump).
+- Every release is built from a tagged commit, artifact promoted from
+  staging to prod (never rebuilt separately per environment — build once,
+  promote the same artifact).
+- Changelog generated from Conventional Commits; must call out any change to
+  a skill's `permissions` or a bot's `allowed_skills` explicitly — these are
+  security-relevant diffs and need a reviewer sign-off.
+- **Canary/staged rollout** for prod deploys of the agent runtime: route a
+  small % of traffic first, watch the eval/observability dashboards
+  (below) for a defined bake period before 100% rollout. Automatic rollback
+  on error-rate or eval-score regression breach.
+
+## Observability (production requirement, not optional)
+
+- Structured logs (JSON) for every agent step: `trace_id`, step type,
+  skill invoked, latency, token usage, cost, outcome (success/error/timeout).
+- Metrics dashboard tracks, per bot: request volume, error rate, p50/p95
+  latency, cost per request, budget-exhaustion rate, guardrail-block rate.
+- Alerting thresholds defined per bot in `/infra/alerts/<bot>.yaml` — at
+  minimum: error rate spike, cost spike, guardrail-block rate spike (signals
+  possible attack or bad routing).
+- Distributed tracing across planner → skill → external API calls so a slow
+  or failing request can be diagnosed step-by-step, not just "the agent
+  timed out."
+
+## Infrastructure as Code
+
+- All infra (compute, networking, secrets store, model-provider config)
+  defined as code (Terraform/Pulumi/CDK — pick one, document the choice in
+  `/docs/infra.md`) — no manual console changes to staging/prod.
+- PRs touching `/infra` require a plan/diff output attached to the PR before
+  merge.
+
+## Local developer experience
+
+- A single `make` (or `just`) entrypoint for the common flows so this is
+  reproducible without memorizing flags:
+
+```
+make setup       # install deps, pull docker images
+make lint
+make test        # unit + integration
+make eval        # run agent eval suite locally
+make run         # start the agent locally with docker-compose
+make deploy-stg  # build, push, deploy to staging
+```
+
+Do not let these drift from what CI actually runs — CI should call the same
+make targets, not a parallel set of ad hoc scripts.

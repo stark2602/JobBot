@@ -1,0 +1,11 @@
+---
+description: Enforces Test-Driven Development (TDD) and execution discipline for autonomous agent tasks.
+globs: ["*"]
+alwaysApply: true
+---
+# Execution Discipline & Verification
+- **Never claim a task is done without proof.** 
+- Before submitting a fix or a new feature, you MUST run the corresponding tests (e.g., `npm test`, `pytest`). 
+- If tests do not exist for the new feature, you must write them first (TDD).
+- If you modify code, run the typechecker (`tsc --noEmit` or `mypy`) and the linter before returning the output.
+- **Self-Correction:** If a test or command fails, do not stop. Read the error, fix the code, and run it again until it passes.

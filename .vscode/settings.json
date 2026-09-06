@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\\.\\\\\\.venv\\\\Scripts\\\\python -m pytest tests/unit/skills/match_jobs/test_handler__dedupe\\.py tests/unit/skills/send_digest/test_handler__smtp\\.py tests/integration/test_executor__heuristic_run\\.py -q$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

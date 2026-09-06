@@ -1,0 +1,40 @@
+---
+description: Architectural blueprint and technical constraints for the 8-hour Job Search & Match Bot.
+---
+# PreRequesit:
+- Below are the suggestion only except Outcomes Requires you can modify the plan by your convenience.
+- No cost apply to this bot. should able to host it for free.
+
+# Outcomes Requires
+- Search the job as per the entry made on the paltform for that you can make a yaml to take of skill,location and experience
+- Able to host it free. Give me free hosting steps. 
+- give and csv track of the job found and send 
+
+# Job Bot Architecture & Constraints
+
+## 1. Ingestion & Search Rules
+- **Target Priority:** Prioritize direct ATS URLs (Greenhouse, Lever, Workday) over job board aggregators.
+- **Time Constraint:** Filter all API queries and scrapers to only pull jobs posted within the last 8 to 12 hours.
+- **Exclusion Filters:** Hardcode filters to drop jobs containing terms like "Staffing Agency", "C2C", "Security Clearance", or "Unpaid".
+
+## 2. Deduplication & State Management
+- **Unique Hash:** Generate a unique ID for every job using an MD5 hash of `lowercase(Company_Name + Job_Title + Location)`.
+- **Database:** Use a lightweight persistent store (e.g., SQLite or a simple JSON/localdb if prototyping).
+- **Idempotency:** Before processing a job, check the database. If the hash exists, skip it entirely. Never process or send the same job twice.
+
+## 3. Matching Engine (LLM Integration)
+- **Scoring System:** Pass the job description and user resume to the LLM. The LLM must output a strict JSON object containing:
+  - `match_score`: Integer (0-100).
+  - `reason`: A concise 1-2 sentence string explaining the core match/gap.
+- **Thresholds:** Discard jobs with a `match_score` below 70.
+
+## 4. Email Digest Formatting
+- **Consolidation:** Never send one email per job. Aggregate all matching jobs from the execution run into a single HTML digest.
+- **Tiers:** Group the email output into:
+  - "Top Matches" (Score 90-100%) - full details.
+  - "Good Fits" (Score 75-89%) - compact list.
+- **Direct Links:** Ensure the email provides the direct ATS application link.
+
+## 5. Execution Logic
+- Ensure the main entry point can be easily triggered by a cron job or external scheduler  every 8 hours.
+- The script must fail gracefully. If one job source fails to load, catch the error, log it, and continue parsing the other sources.

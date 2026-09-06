@@ -1,0 +1,13 @@
+services:
+  jobbot:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - jobbot-data:/app/data
+    working_dir: /app
+
+volumes:
+  jobbot-data:

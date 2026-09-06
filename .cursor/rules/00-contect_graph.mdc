@@ -1,0 +1,16 @@
+---
+description: Enforces a minimal repository index (PROJECT_GRAPH.md) to eliminate context draining and redundant file scans.
+globs: ["*"]
+alwaysApply: true
+---
+# Index-First Context Strategy
+- **Consult the Map First:** Before reading source code, inspect `PROJECT_GRAPH.md` at the project root to locate the exact module, function, or interface. Never blindly grep or dump multiple full files into the context window.
+- **Surgical Loading:** Read ONLY the specific file and line ranges identified in `PROJECT_GRAPH.md`.
+
+# Graph Maintenance Rules
+- **Keep it Synchronized:** When adding, deleting, moving, or modifying exports, routes, models, or core functions, update `PROJECT_GRAPH.md` in the same turn.
+- **Ultra-Dense Format:** The graph must remain compact and machine-readable (symbol names, single-line descriptions, call relationships). Do not write narrative essays or include implementation details.
+
+# Output & Token Thrift
+- **Diffs Only:** Output only the code lines that change. Use `// ... existing code ...` to preserve unmodified lines.
+- **Zero Explanations:** Provide no pleasantries, setup statements, or recap summaries. Emit the code fix or command directly.

@@ -1,0 +1,7 @@
+-r requirements.txt
+pytest>=8.3,<9
+ruff>=0.8,<1
+mypy>=1.13,<2
+black>=24.10,<26
+types-PyYAML>=6.0.12
+setuptools>=75

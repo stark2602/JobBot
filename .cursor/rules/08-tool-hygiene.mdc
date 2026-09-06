@@ -1,0 +1,9 @@
+---
+description: Rules for using semantic search, codebase indexing, and file reading tools efficiently.
+globs: ["*"]
+alwaysApply: true
+---
+# Efficient Codebase Navigation
+- **Search over read:** If you are looking for a function or component, use semantic search or `grep` tools first. Do not blindly `cat` or read full files guessing where the code is.
+- **Skip binaries and assets:** Never attempt to read image files, compiled binaries, minified bundles (`dist/`, `build/`), or massive dataset files (`.csv`, `.json`).
+- **Targeted reads:** When using file-reading tools, read specific line ranges rather than the entire file whenever possible to save context window space.

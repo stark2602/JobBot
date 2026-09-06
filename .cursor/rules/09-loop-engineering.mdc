@@ -1,0 +1,16 @@
+---
+description: Architecture standards for autonomous agent loops (Loop Engineering) instead of manual prompting.
+globs: ["src/agents/**/*.ts", "src/loop/**/*.py"]
+alwaysApply: false
+---
+# Loop Architecture
+- **The Execution Loop:** Do not write scripts that wait for a human prompt after every step. Implement a `while` loop that runs autonomously until a terminal state (`DONE`, `MAX_STEPS`, or `FATAL_ERROR`) is reached.
+- **State as Truth:** Pass the entire execution history (previous thoughts, tool calls, and raw tool outputs) back into the LLM on every tick.
+
+# Self-Correction (The Inner Loop)
+- **Catch and Reflect:** If a tool throws an exception or returns a 400/500 error, do not crash the loop. Append the raw error message to the history as a "ToolResult" and let the LLM read the error to attempt a fix on the next iteration.
+- **Validation Gates:** Before allowing the LLM to output a final "Done" state, the loop must automatically trigger a verification tool (e.g., running the test suite) to ensure the agent isn't hallucinating success.
+
+# Safety & Token Management
+- **Max Iterations:** Always enforce a hard `MAX_ITERATIONS` limit (e.g., 15 loops) to prevent infinite API runaway.
+- **Context Pruning:** If the loop runs long, implement a summarization step to compress older tool outputs so the agent doesn't exhaust its context window.

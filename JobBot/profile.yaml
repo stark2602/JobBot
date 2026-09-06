@@ -1,0 +1,44 @@
+candidate:
+  skills:
+    - Python
+    - Java
+    - JavaScript
+    - HTML/CSS
+    - React
+    - SQL
+    - Git
+    - AWS
+    - Django
+  locations:
+    - Remote
+    - Delhi
+    - Noida
+    - Gurgaon
+    - Hyderabad
+    - Bangalore
+  experience_years: 1
+  resume_path: JobBot/resume.txt
+
+search:
+  max_age_hours: 12
+  match_threshold: 60
+  email_min_score: 65
+  exclude_terms:
+    - Staffing Agency
+    - C2C
+    - Security Clearance
+    - Unpaid
+    - Consultant
+
+sources:
+  greenhouse:
+    - google
+    - microsoft
+    - amazon
+    - flipkart
+    - swiggy
+  lever:
+    - atlassian
+    - figma
+    - thoughtworks
+  workday: []

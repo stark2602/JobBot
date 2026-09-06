@@ -1,0 +1,76 @@
+---
+description: Baseline engineering standards for this repo. Always active.
+globs:
+alwaysApply: true
+---
+
+# General Engineering Rules
+
+You are working in a repo that builds an **agentic system from scratch** (custom
+runtime, custom skills, custom eval/test harness, custom deploy pipeline) — not a
+thin wrapper over a third-party agent framework. Prefer explicit, inspectable code
+over "magic" abstractions.
+
+## Non-negotiables
+
+- **Never invent APIs, config keys, or file paths.** If unsure whether something
+  exists in this repo, open the file and check before writing code that depends on it.
+- **No silent fallbacks.** If a dependency, env var, or file is missing, fail loudly
+  with a clear error — do not catch-and-continue with a guessed default for anything
+  that affects correctness (model choice, credentials, tool permissions).
+- **Every new module ships with tests in the same PR.** No exceptions — see
+  `200-testing.mdc`.
+- **Every public function/class has a docstring** stating purpose, inputs, outputs,
+  and failure modes (what it raises/returns on error).
+- **Small, composable units.** A function does one thing. If a function needs a
+  comment to explain "step 1 / step 2 / step 3", split it into named functions.
+- **Type everything.** Python: full type hints, mypy-clean. TypeScript: `strict: true`,
+  no `any` unless justified with a comment.
+
+## Project layout (canonical)
+
+```
+/src
+  /agent          -> core runtime: planner, executor, memory, orchestrator
+  /skills         -> specialized skill modules (see 110-agent-skills.mdc)
+  /tools          -> low-level tool adapters (HTTP, DB, filesystem, shell)
+  /eval           -> golden-set evals, scorers, regression harness
+  /observability  -> logging, tracing, metrics emitters
+/tests
+  /unit
+  /integration
+  /e2e
+  /eval           -> agent behavior evals (not classic unit tests)
+/infra            -> IaC, Dockerfiles, CI configs
+/docs
+```
+
+Do not create new top-level directories without updating this file.
+
+## Style
+
+- Python: `ruff` + `black`, line length 100, `pydantic` v2 for all structured
+  data crossing a module boundary (tool inputs/outputs, agent messages, config).
+- TypeScript/Node: `eslint` + `prettier`, ESM only, `zod` for runtime validation
+  at every external boundary (API responses, tool outputs, user input).
+- Commit messages: Conventional Commits (`feat:`, `fix:`, `test:`, `chore:`,
+  `refactor:`, `docs:`). One logical change per commit.
+- No commented-out code in commits. Delete it; git history keeps it.
+
+## Secrets & config
+
+- No secrets in code, ever — not even "for local testing." Use `.env` (git-ignored)
+  + `/infra/secrets` reference in `400-security.mdc`.
+- All config is loaded through a single typed config object
+  (`src/agent/config.py` or `src/agent/config.ts`) — never scattered `os.environ.get`
+  calls through the codebase.
+
+## When editing existing code
+
+- Read the whole file (or the relevant class/module) before editing — don't
+  pattern-match on a snippet.
+- Preserve existing public interfaces unless the task explicitly asks for a
+  breaking change; if you must break one, grep the repo for all call sites and
+  update them in the same PR.
+- Run linters/tests locally (via the provided make targets, see `300-devops.mdc`)
+  before considering a task done.

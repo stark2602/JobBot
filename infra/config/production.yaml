@@ -1,0 +1,4 @@
+env: production
+matcher_backend: llm
+send_email: true
+max_age_hours: 12

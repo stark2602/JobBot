@@ -1,0 +1,4 @@
+bot: job_bot
+error_rate_spike: 0.2
+cost_spike_usd: 0.01
+guardrail_block_rate_spike: 0.3

@@ -1,0 +1,27 @@
+---
+description: Secrets management, dependency, and infra security rules.
+alwaysApply: false
+---
+# Security Rules
+
+- **Secrets** (API keys, DB credentials, signing keys) are only ever read from
+  a secrets manager (e.g. Vault, AWS Secrets Manager, GCP Secret Manager) or,
+  locally, a git-ignored `.env` loaded by the typed config object
+  (`000-general.mdc`). Never hardcode, never log, never put in a Docker
+  `ARG`/`ENV` baked into an image layer.
+- **Dependency hygiene**: lockfiles committed (`poetry.lock`/`package-lock.json`),
+  automated vulnerability scanning in CI (`300-devops.mdc` stage 6), and a
+  documented policy for how fast a critical CVE must be patched (e.g. 48h).
+- **Least privilege everywhere**: cloud IAM roles scoped per-service, skill
+  permissions scoped per-bot (`120-agent-safety.mdc`), DB users scoped to the
+  schemas they need.
+- **Input validation at every trust boundary**: API request bodies, tool
+  outputs, file uploads, environment variables — validate with
+  pydantic/zod before use, reject on mismatch rather than coercing silently.
+- **Audit logging** for any action with real-world side effects (sending
+  data externally, spending money, modifying persistent state) — who/what
+  triggered it, what the inputs were, what the outcome was.
+- **PII handling**: identify any field that can contain PII in the data
+  model, document retention/redaction policy in `/docs/data-handling.md`,
+  and ensure the observability redaction pass (`300-devops.mdc`) actually
+  covers it — verify with a test, don't just assume the regex works.
