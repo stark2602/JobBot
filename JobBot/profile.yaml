@@ -29,34 +29,16 @@ search:
     - Consultant
 
 sources:
-  greenhouse:
-    - google
-    - microsoft
-    - amazon
-    - flipkart
-    - swiggy
-    - facebook
-    - apple
-    - netflix
-    - adobe
-    - salesforce
-    - oracle
-    - ibm
-  lever:
-    - atlassian
-    - figma
-    - thoughtworks
-    - stripe
-    - square
-    - slack
-    - zoom
-    - dropbox
-    - github
-    - airbnb
+  greenhouse: []
+  lever: []
+  workday: []
   naukri:
     - naukri.com
     - monsterindia.com
     - indeed.com
+  generic_web:
+    - https://api.example.com/jobs
+    - https://jobs.github.com/positions.json
   generic_web:
     - https://api.example.com/jobs
     - https://jobs.github.com/positions.json
