@@ -18,7 +18,7 @@ candidate:
   resume_path: JobBot/resume.txt
 
 search:
-  max_age_hours: 12
+  max_age_hours: 120
   match_threshold: 60
   email_min_score: 65
   exclude_terms:
@@ -35,8 +35,28 @@ sources:
     - amazon
     - flipkart
     - swiggy
+    - facebook
+    - apple
+    - netflix
+    - adobe
+    - salesforce
+    - oracle
+    - ibm
   lever:
     - atlassian
     - figma
     - thoughtworks
-  workday: []
+    - stripe
+    - square
+    - slack
+    - zoom
+    - dropbox
+    - github
+    - airbnb
+  naukri:
+    - naukri.com
+    - monsterindia.com
+    - indeed.com
+  generic_web:
+    - https://api.example.com/jobs
+    - https://jobs.github.com/positions.json

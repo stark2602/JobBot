@@ -20,7 +20,7 @@ class WorkdayBoard(BaseModel):
 class Sources(BaseModel):
     greenhouse: list[str] = Field(default_factory=list)
     lever: list[str] = Field(default_factory=list)
-    workday: list[WorkdayBoard] = Field(default_factory=list)
+    generic_web: list[str] = Field(default_factory=list)
 
 
 class Candidate(BaseModel):
@@ -39,7 +39,7 @@ class Candidate(BaseModel):
 
 
 class SearchRules(BaseModel):
-    max_age_hours: int = Field(default=12, ge=8, le=12)
+    max_age_hours: int = Field(default=120, ge=8, le=120)
     match_threshold: int = Field(default=70, ge=0, le=100)
     email_min_score: int = Field(default=75, ge=0, le=100)
     exclude_terms: list[str] = Field(

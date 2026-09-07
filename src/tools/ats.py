@@ -36,11 +36,19 @@ def ingest_all(
             msg = f"greenhouse:{token}: {exc}"
             logger.error(msg)
             errors.append(msg)
+        except Exception as exc:
+            msg = f"greenhouse:{token}: {exc}"
+            logger.error(msg)
+            errors.append(msg)
 
     for company in profile.sources.lever:
         try:
             jobs.extend(fetch_lever(company, http=client, max_age_hours=max_age, timeout_s=timeout_s))
         except SkillUpstreamError as exc:
+            msg = f"lever:{company}: {exc}"
+            logger.error(msg)
+            errors.append(msg)
+        except Exception as exc:
             msg = f"lever:{company}: {exc}"
             logger.error(msg)
             errors.append(msg)
@@ -50,6 +58,19 @@ def ingest_all(
             jobs.extend(fetch_workday(board, http=client, max_age_hours=max_age, timeout_s=timeout_s))
         except SkillUpstreamError as exc:
             msg = f"workday:{board.company}: {exc}"
+            logger.error(msg)
+            errors.append(msg)
+        except Exception as exc:
+            msg = f"workday:{board.company}: {exc}"
+            logger.error(msg)
+            errors.append(msg)
+
+    # Fetch generic web sources if any
+    if profile.sources.generic_web:
+        try:
+            jobs.extend(fetch_generic_web(profile.sources.generic_web, http=client, max_age_hours=max_age, timeout_s=timeout_s))
+        except Exception as exc:
+            msg = f"generic_web: {exc}"
             logger.error(msg)
             errors.append(msg)
 
@@ -161,6 +182,42 @@ def fetch_workday(
                 description=strip_html(str(item.get("bulletFields") or item.get("title") or "")),
             )
         )
+    return out
+
+
+def fetch_generic_web(urls: list[str], *, http: HttpTransport, max_age_hours: int, timeout_s: float) -> list[JobPosting]:
+    """Fetch job postings from generic web URLs.
+
+    This is a placeholder implementation that performs a simple GET request
+    and expects a JSON list of job dicts with keys matching JobPosting fields.
+    Errors are logged and ignored to keep the ingestion pipeline robust.
+    """
+    out: list[JobPosting] = []
+    for url in urls:
+        try:
+            payload = http.get_json(url, timeout_s=timeout_s)
+            # Assume payload is a list of job dicts; adapt as needed.
+            if isinstance(payload, list):
+                for item in payload:
+                    try:
+                        posted = parse_datetime(item.get("posted_at") or item.get("date"))
+                        if posted is None or not within_max_age(posted, max_age_hours):
+                            continue
+                        out.append(
+                            JobPosting(
+                                source="generic_web",
+                                company=str(item.get("company") or ""),
+                                title=str(item.get("title") or ""),
+                                location=str(item.get("location") or ""),
+                                url=str(item.get("url") or ""),
+                                posted_at=posted,
+                                description=strip_html(str(item.get("description") or "")),
+                            )
+                        )
+                    except Exception:
+                        continue
+        except Exception as exc:
+            logger.error(f"generic_web fetch error for {url}: {exc}")
     return out
 
 
