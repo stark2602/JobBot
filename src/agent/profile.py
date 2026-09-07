@@ -42,7 +42,7 @@ class Candidate(BaseModel):
 
 
 class SearchRules(BaseModel):
-    max_age_hours: int = Field(default=120, ge=8, le=120)
+    max_age_hours: int = Field(default=120, ge=8, le=2000)
     match_threshold: int = Field(default=70, ge=0, le=100)
     email_min_score: int = Field(default=75, ge=0, le=100)
     exclude_terms: list[str] = Field(

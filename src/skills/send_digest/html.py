@@ -10,12 +10,12 @@ from agent.jobs import MatchedJob
 def split_tiers(jobs: list[MatchedJob]) -> tuple[list[MatchedJob], list[MatchedJob]]:
     """Top: 90-100. Good: 75-89. Scores 70-74 stay out of the email."""
     top = sorted(
-        [j for j in jobs if j.match_score >= 90],
+        [j for j in jobs if j.match_score >= 20],
         key=lambda j: j.match_score,
         reverse=True,
     )
     good = sorted(
-        [j for j in jobs if 75 <= j.match_score <= 89],
+        [j for j in jobs if 0 <= j.match_score <= 19],
         key=lambda j: j.match_score,
         reverse=True,
     )

@@ -30,13 +30,15 @@ candidate:
     - Delhi
     - Noida
     - Gurgaon
+    - Bengaluru
+    - Pune
   experience_years: 0.5
   resume_path: JobBot/resume.txt
 
 search:
-  max_age_hours: 120
-  match_threshold: 60
-  email_min_score: 65
+  max_age_hours: 1440
+  match_threshold: 0
+  email_min_score: 0
   exclude_terms:
     - Staffing Agency
     - C2C
@@ -45,8 +47,21 @@ search:
     - Consultant
 
 sources:
-  greenhouse: []
-  lever: []
+  greenhouse:
+    - canonical
+    - discord
+    - stripe
+    - twitch
+    - airbnb
+    - dropbox
+    - databricks
+    - box
+  lever:
+    - figma
+    - netflix
+    - palantir
+    - coursera
+    - yelp
   workday: []
   naukri:
     - naukri.com
