@@ -74,6 +74,22 @@ def ingest_all(
             logger.error(msg)
             errors.append(msg)
 
+    if profile.sources.naukri:
+        try:
+            jobs.extend(fetch_naukri(profile.sources.naukri, http=client, max_age_hours=max_age, timeout_s=timeout_s))
+        except Exception as exc:
+            msg = f"naukri: {exc}"
+            logger.error(msg)
+            errors.append(msg)
+
+    if profile.sources.freshers:
+        try:
+            jobs.extend(fetch_freshers(profile.sources.freshers, http=client, max_age_hours=max_age, timeout_s=timeout_s))
+        except Exception as exc:
+            msg = f"freshers: {exc}"
+            logger.error(msg)
+            errors.append(msg)
+
     return jobs, errors
 
 
@@ -194,6 +210,8 @@ def fetch_generic_web(urls: list[str], *, http: HttpTransport, max_age_hours: in
     """
     out: list[JobPosting] = []
     for url in urls:
+        if not url.startswith("http"):
+            url = f"https://{url}"
         try:
             payload = http.get_json(url, timeout_s=timeout_s)
             # Assume payload is a list of job dicts; adapt as needed.
@@ -218,6 +236,23 @@ def fetch_generic_web(urls: list[str], *, http: HttpTransport, max_age_hours: in
                         continue
         except Exception as exc:
             logger.error(f"generic_web fetch error for {url}: {exc}")
+    return out
+
+
+def fetch_naukri(domains: list[str], *, http: HttpTransport, max_age_hours: int, timeout_s: float) -> list[JobPosting]:
+    """Fetch job postings from Naukri/Indeed/Monster. Placeholder."""
+    # For now, behaves like generic web but tags source as 'naukri'
+    out = fetch_generic_web(domains, http=http, max_age_hours=max_age_hours, timeout_s=timeout_s)
+    for job in out:
+        job.source = "naukri"
+    return out
+
+
+def fetch_freshers(domains: list[str], *, http: HttpTransport, max_age_hours: int, timeout_s: float) -> list[JobPosting]:
+    """Fetch job postings from freshers job boards. Placeholder."""
+    out = fetch_generic_web(domains, http=http, max_age_hours=max_age_hours, timeout_s=timeout_s)
+    for job in out:
+        job.source = "freshers"
     return out
 
 

@@ -21,6 +21,8 @@ class Sources(BaseModel):
     greenhouse: list[str] = Field(default_factory=list)
     lever: list[str] = Field(default_factory=list)
     workday: list[WorkdayBoard] = Field(default_factory=list)
+    naukri: list[str] = Field(default_factory=list)
+    freshers: list[str] = Field(default_factory=list)
     generic_web: list[str] = Field(default_factory=list)
 
 

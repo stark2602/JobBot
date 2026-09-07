@@ -1,20 +1,36 @@
 candidate:
   skills:
-    - Python
-    - Java
+    # Core
+    - Operating System
+    - Computer Networking and Architecture
+    - Database and Management System
+    # Languages
+    - C++
     - JavaScript
-    - HTML/CSS
+    - Python
+    # Frameworks
+    - HTML
+    - CSS
+    - NodeJS
+    - ReactJs
     - React
-    - SQL
+    # Tools/Platforms
+    - MySQL
+    - MongoDB
+    - GitHub
     - Git
-    - AWS
-    - Django
+    - Ubuntu
+    # Soft Skills
+    - Learning Agility
+    - Communication
+    - Teamwork
+    - Leadership
   locations:
     - Remote
     - Delhi
     - Noida
     - Gurgaon
-  experience_years: 0 to 1
+  experience_years: 0.5
   resume_path: JobBot/resume.txt
 
 search:
@@ -36,6 +52,14 @@ sources:
     - naukri.com
     - monsterindia.com
     - indeed.com
+  freshers:
+    - internshala.com
+    - hirist.tech
+    - instahyre.com
+    - cutshort.io
+    - elitmus.com
+    - getwork.org
+    - freshersworld.com
   generic_web:
     - https://api.example.com/jobs
     - https://jobs.github.com/positions.json
