@@ -1,0 +1,60 @@
+name: JobBot Fresher Search
+
+on:
+  schedule:
+    - cron: "0 */8 * * *"  # Run every 8 hours UTC
+  workflow_dispatch:       # Manual trigger button
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Restore SQLite cache (dedup DB)
+        uses: actions/cache@v3
+        with:
+          path: data/jobs.sqlite
+          key: jobbot-sqlite-${{ runner.os }}
+          restore-keys: jobbot-sqlite-
+
+      - name: Run JobBot
+        env:
+          JOBBOT_MATCHER_BACKEND: ${{ secrets.JOBBOT_MATCHER_BACKEND || 'heuristic' }}
+          JOBBOT_LLM_PROVIDER: ${{ secrets.JOBBOT_LLM_PROVIDER || 'gemini' }}
+          JOBBOT_LLM_MODEL: gemini-2.0-flash
+          JOBBOT_LLM_API_KEY: ${{ secrets.JOBBOT_LLM_API_KEY || '' }}
+          JOBBOT_SEND_EMAIL: "true"
+          JOBBOT_SMTP_USER: ${{ secrets.JOBBOT_SMTP_USER }}
+          JOBBOT_SMTP_PASSWORD: ${{ secrets.JOBBOT_SMTP_PASSWORD }}
+          JOBBOT_SMTP_HOST: smtp.office365.com
+          JOBBOT_SMTP_PORT: "587"
+          JOBBOT_DIGEST_TO: ${{ secrets.JOBBOT_DIGEST_TO }}
+          JOBBOT_AUTO_CONFIRM_EMAIL: "true"
+        run: python -m agent.cli --root .
+
+      - name: Upload jobs CSV as artifact
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: jobs-${{ github.run_number }}
+          path: data/jobs.csv
+          retention-days: 30
+
+      - name: Commit CSV to repo (optional)
+        if: always()
+        run: |
+          git config --global user.name "jobbot[bot]"
+          git config --global user.email "bot@jobbot.local"
+          git add data/jobs.csv
+          git commit -m "Update jobs.csv" || true
+          git push

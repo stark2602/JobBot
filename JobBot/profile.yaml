@@ -14,8 +14,6 @@ candidate:
     - Delhi
     - Noida
     - Gurgaon
-    - Hyderabad
-    - Bangalore
   experience_years: 1
   resume_path: JobBot/resume.txt
 
