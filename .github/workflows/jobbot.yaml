@@ -36,7 +36,7 @@ jobs:
           JOBBOT_SEND_EMAIL: "true"
           JOBBOT_SMTP_USER: ${{ secrets.JOBBOT_SMTP_USER }}
           JOBBOT_SMTP_PASSWORD: ${{ secrets.JOBBOT_SMTP_PASSWORD }}
-          JOBBOT_SMTP_HOST: smtp.office365.com
+          JOBBOT_SMTP_HOST: smtp.gmail.com
           JOBBOT_SMTP_PORT: "587"
           JOBBOT_DIGEST_TO: ${{ secrets.JOBBOT_DIGEST_TO }}
           JOBBOT_AUTO_CONFIRM_EMAIL: "true"
