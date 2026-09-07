@@ -26,12 +26,9 @@ candidate:
     - Teamwork
     - Leadership
   locations:
-    - Remote
     - Delhi
     - Noida
     - Gurgaon
-    - Bengaluru
-    - Pune
   experience_years: 0.5
   resume_path: JobBot/resume.txt
 
