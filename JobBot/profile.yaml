@@ -26,39 +26,42 @@ candidate:
     - Teamwork
     - Leadership
   locations:
+    - Remote
     - Delhi
     - Noida
     - Gurgaon
-  experience_years: 0.5
+    - Hyderabad
+    - Bangalore
+  experience_years: 1
   resume_path: JobBot/resume.txt
 
 search:
-  max_age_hours: 1440
-  match_threshold: 0
-  email_min_score: 0
+  max_age_hours: 8
+  match_threshold: 35
+  email_min_score: 45
   exclude_terms:
     - Staffing Agency
     - C2C
     - Security Clearance
     - Unpaid
     - Consultant
+    - Internship
 
 sources:
   greenhouse:
-    - canonical
-    - discord
-    - stripe
-    - twitch
-    - airbnb
-    - dropbox
-    - databricks
-    - box
+    - google
+    - microsoft
+    - amazon
+    - flipkart
+    - swiggy
+    - adobe
   lever:
+    - atlassian
     - figma
-    - netflix
-    - palantir
-    - coursera
-    - yelp
+    - thoughtworks
+    - razorpay
+    - freshworks
+    - upstox
   workday: []
   naukri:
     - naukri.com

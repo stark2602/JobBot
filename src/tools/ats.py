@@ -19,7 +19,7 @@ def ingest_all(
     http: HttpTransport | None = None,
     timeout_s: float = 20.0,
 ) -> tuple[list[JobPosting], list[str]]:
-    """Fetch Greenhouse, Lever, and Workday boards listed in the profile.
+    """Fetch Greenhouse, Lever, Workday, and fresher-oriented public sources.
 
     Returns:
         (postings, source_errors) — errors are logged strings; parsing continues.
@@ -36,19 +36,11 @@ def ingest_all(
             msg = f"greenhouse:{token}: {exc}"
             logger.error(msg)
             errors.append(msg)
-        except Exception as exc:
-            msg = f"greenhouse:{token}: {exc}"
-            logger.error(msg)
-            errors.append(msg)
 
     for company in profile.sources.lever:
         try:
             jobs.extend(fetch_lever(company, http=client, max_age_hours=max_age, timeout_s=timeout_s))
         except SkillUpstreamError as exc:
-            msg = f"lever:{company}: {exc}"
-            logger.error(msg)
-            errors.append(msg)
-        except Exception as exc:
             msg = f"lever:{company}: {exc}"
             logger.error(msg)
             errors.append(msg)
@@ -60,35 +52,25 @@ def ingest_all(
             msg = f"workday:{board.company}: {exc}"
             logger.error(msg)
             errors.append(msg)
-        except Exception as exc:
-            msg = f"workday:{board.company}: {exc}"
+
+    for url in profile.sources.generic_web:
+        try:
+            jobs.extend(fetch_generic_web(url, http=client, max_age_hours=max_age, timeout_s=timeout_s))
+        except SkillUpstreamError as exc:
+            msg = f"generic_web:{url}: {exc}"
             logger.error(msg)
             errors.append(msg)
 
-    # Fetch generic web sources if any
-    if profile.sources.generic_web:
-        try:
-            jobs.extend(fetch_generic_web(profile.sources.generic_web, http=client, max_age_hours=max_age, timeout_s=timeout_s))
-        except Exception as exc:
-            msg = f"generic_web: {exc}"
-            logger.error(msg)
-            errors.append(msg)
-
-    if profile.sources.naukri:
-        try:
-            jobs.extend(fetch_naukri(profile.sources.naukri, http=client, max_age_hours=max_age, timeout_s=timeout_s))
-        except Exception as exc:
-            msg = f"naukri: {exc}"
-            logger.error(msg)
-            errors.append(msg)
-
-    if profile.sources.freshers:
-        try:
-            jobs.extend(fetch_freshers(profile.sources.freshers, http=client, max_age_hours=max_age, timeout_s=timeout_s))
-        except Exception as exc:
-            msg = f"freshers: {exc}"
-            logger.error(msg)
-            errors.append(msg)
+    for site in profile.sources.naukri + profile.sources.freshers:
+        if site.startswith("http://") or site.startswith("https://"):
+            try:
+                jobs.extend(fetch_generic_web(site, http=client, max_age_hours=max_age, timeout_s=timeout_s))
+            except SkillUpstreamError as exc:
+                msg = f"site:{site}: {exc}"
+                logger.error(msg)
+                errors.append(msg)
+        else:
+            logger.info("Skipping non-API fresher source %s; add a JSON endpoint URL to include it.", site)
 
     return jobs, errors
 
@@ -201,41 +183,65 @@ def fetch_workday(
     return out
 
 
-def fetch_generic_web(urls: list[str], *, http: HttpTransport, max_age_hours: int, timeout_s: float) -> list[JobPosting]:
-    """Fetch job postings from generic web URLs.
+def fetch_generic_web(
+    url: str,
+    *,
+    http: HttpTransport,
+    max_age_hours: int,
+    timeout_s: float,
+) -> list[JobPosting]:
+    """Parse a generic public job JSON endpoint into JobPosting[] when the payload is list-like."""
+    payload = http.get_json(url, timeout_s=timeout_s)
+    items: Any
+    if isinstance(payload, dict):
+        for key in ("jobs", "data", "results", "positions"):
+            if isinstance(payload.get(key), list):
+                items = payload[key]
+                break
+        else:
+            raise SkillUpstreamError(f"Generic web payload for {url} was not a list-like jobs object")
+    elif isinstance(payload, list):
+        items = payload
+    else:
+        raise SkillUpstreamError(f"Generic web payload for {url} was not a list or object")
 
-    This is a placeholder implementation that performs a simple GET request
-    and expects a JSON list of job dicts with keys matching JobPosting fields.
-    Errors are logged and ignored to keep the ingestion pipeline robust.
-    """
     out: list[JobPosting] = []
-    for url in urls:
-        if not url.startswith("http"):
-            url = f"https://{url}"
-        try:
-            payload = http.get_json(url, timeout_s=timeout_s)
-            # Assume payload is a list of job dicts; adapt as needed.
-            if isinstance(payload, list):
-                for item in payload:
-                    try:
-                        posted = parse_datetime(item.get("posted_at") or item.get("date"))
-                        if posted is None or not within_max_age(posted, max_age_hours):
-                            continue
-                        out.append(
-                            JobPosting(
-                                source="generic_web",
-                                company=str(item.get("company") or ""),
-                                title=str(item.get("title") or ""),
-                                location=str(item.get("location") or ""),
-                                url=str(item.get("url") or ""),
-                                posted_at=posted,
-                                description=strip_html(str(item.get("description") or "")),
-                            )
-                        )
-                    except Exception:
-                        continue
-        except Exception as exc:
-            logger.error(f"generic_web fetch error for {url}: {exc}")
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        posted = parse_datetime(
+            item.get("posted_at")
+            or item.get("created_at")
+            or item.get("published_at")
+            or item.get("date")
+        )
+        if posted is None or not within_max_age(posted, max_age_hours=max_age_hours):
+            continue
+        title = str(item.get("title") or item.get("role") or item.get("name") or "")
+        company = str(item.get("company") or item.get("company_name") or item.get("employer") or "Unknown")
+        location = str(item.get("location") or item.get("city") or item.get("work_location") or "")
+        apply_url = str(
+            item.get("url")
+            or item.get("apply_url")
+            or item.get("link")
+            or item.get("absolute_url")
+            or item.get("job_url")
+            or url
+        )
+        description = strip_html(
+            str(item.get("description") or item.get("content") or item.get("summary") or title)
+        )
+        out.append(
+            JobPosting(
+                source="generic_web",
+                company=company,
+                title=title,
+                location=location,
+                url=apply_url,
+                posted_at=posted,
+                description=description,
+            )
+        )
     return out
 
 
