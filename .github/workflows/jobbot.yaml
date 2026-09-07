@@ -21,7 +21,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Restore SQLite cache (dedup DB)
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: data/jobs.sqlite
           key: jobbot-sqlite-${{ runner.os }}
@@ -44,7 +44,7 @@ jobs:
 
       - name: Upload jobs CSV as artifact
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jobs-${{ github.run_number }}
           path: data/jobs.csv
