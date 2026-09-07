@@ -14,7 +14,7 @@ candidate:
     - Delhi
     - Noida
     - Gurgaon
-  experience_years: 1
+  experience_years: 0 to 1
   resume_path: JobBot/resume.txt
 
 search:
